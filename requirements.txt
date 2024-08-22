@@ -1,0 +1,10 @@
+qaseio>=4.0.1
+certifi
+requests
+urllib3
+psutil
+pandas 
+openpyxl
+testit-api-client
+html2text
+mysql-connector-python

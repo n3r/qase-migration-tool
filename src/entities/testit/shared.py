@@ -1,0 +1,76 @@
+import asyncio
+
+from ..service import QaseService, TestItService
+from ..support import Logger, Mappings, Pools
+
+
+class SharedSteps:
+    def __init__(
+            self,
+            qase_service: QaseService,
+            testit_service: TestItService,
+            logger: Logger,
+            mappings: Mappings,
+            pools: Pools,
+    ):
+        self.qase = qase_service
+        self.testit = testit_service
+        self.logger = logger
+        self.mappings = mappings
+        self.pools = pools
+        self.project = None
+
+        self.map = {}
+        self.logger.divider()
+        self.i = 0
+
+    def import_shared_steps(self, project) -> Mappings:
+        return asyncio.run(self.import_shared_steps_async(project))
+    
+    async def import_shared_steps_async(self, project) -> Mappings:
+        self.project = project
+
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(self.import_shared_steps()) 
+
+    async def import_shared_steps(self):
+
+
+    async def import_shared_steps_async(self, project) -> Mappings:
+        self.logger.log(f"[{project['code']}][Shared Steps] Importing shared steps")
+        limit = 250
+        offset = 0
+
+        shared_steps = []
+        while True:
+            tr_shared = self.testit.get_shared_steps(project['testit_id'], limit, offset)
+            shared_steps += tr_shared['shared_steps']
+            if tr_shared['size'] < limit:
+                break
+            offset += limit
+
+        self.mappings.stats.add_entity_count(project['code'], 'shared_steps', 'testit', len(shared_steps))
+            
+        self.logger.log(f"[{project['code']}][Shared Steps] Found {len(shared_steps)} shared steps")
+
+        self.logger.print_status(f'[{project["code"]}] Importing shared steps', self.i, len(shared_steps), 1)
+        async with asyncio.TaskGroup() as tg:
+            for step in shared_steps:
+                tg.create_task(self.create_shared_step(project, step, len(shared_steps)))
+
+        self.mappings.shared_steps[project["code"]] = self.map
+        
+        return self.mappings
+
+    async def create_shared_step(self, project, step, cnt):
+        id = await self.pools.qs(
+            self.qase.create_shared_step,
+            project["code"],
+            step['title'],
+            step['custom_steps_separated'],
+        )
+        if id:
+            self.mappings.stats.add_entity_count(project['code'], 'shared_steps', 'qase')
+            self.map[step['id']] = id
+        self.i += 1
+        self.logger.print_status(f'[{project["code"]}] Importing shared steps', self.i, cnt, 1)
