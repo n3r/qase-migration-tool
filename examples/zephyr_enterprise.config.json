@@ -1,0 +1,19 @@
+{
+    "source": "zephyr-enterprise",
+    "qase": {
+        "api_token": "<QASE_API_TOKEN>",
+        "host": "qase.io",
+        "ssl": true,
+        "enterprise": false
+    },
+    "zephyr_enterprise": {
+        "api": {
+            "host": "<ZEPHYR_ENTERPRISE_HOST>",
+            "token": "<ZEPHYR_ENTERPRISE_TOKEN>"
+        }
+    },
+    "projects": {
+        "import": [],
+        "status": "all"
+    }
+}

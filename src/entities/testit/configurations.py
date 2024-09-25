@@ -1,5 +1,5 @@
-from ..service import QaseService, TestItService
-from ..support import Logger, Mappings, Pools
+from ...service import QaseService, TestItService
+from ...support import Logger, Mappings, Pools
 
 import asyncio
 
@@ -8,13 +8,13 @@ class Configurations:
     def __init__(
             self,
             qase_service: QaseService,
-            testit_service: TestItService,
+            source_service: TestItService,
             logger: Logger,
             mappings: Mappings,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testit = testit_service
+        self.testit = source_service
         self.logger = logger
         self.mappings = mappings
         self.pools = pools

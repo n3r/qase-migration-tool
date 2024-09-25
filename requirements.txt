@@ -5,6 +5,7 @@ urllib3
 psutil
 pandas 
 openpyxl
-testit-api-client
 html2text
 mysql-connector-python
+bs4
+asyncio

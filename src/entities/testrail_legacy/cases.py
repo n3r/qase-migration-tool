@@ -1,7 +1,7 @@
 import asyncio
 
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 from qaseio.models import TestStepCreate, TestCasebulkCasesInner
 from .attachments import Attachments
@@ -16,14 +16,14 @@ class Cases:
     def __init__(
             self,
             qase_service: QaseService,
-            testrail_service: TestrailService,
+            source_service: TestrailService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
@@ -42,7 +42,7 @@ class Cases:
 
         async with asyncio.TaskGroup() as tg:
             if self.project['suite_mode'] == 3:
-                suites = await self.pools.tr(self.testrail.get_suites, self.project['testrail_id'])
+                suites = await self.pools.source(self.testrail.get_suites, self.project['testrail_id'])
                 for suite in suites:
                     tg.create_task(self.import_cases_for_suite(suite['id']))
             else:
@@ -61,7 +61,7 @@ class Cases:
         try:
             if suite_id is None:
                 suite_id = 0
-            cases = await self.pools.tr(self.testrail.get_cases, self.project['testrail_id'], suite_id, limit, offset)
+            cases = await self.pools.source(self.testrail.get_cases, self.project['testrail_id'], suite_id, limit, offset)
             self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'testrail', len(cases))
             if cases:
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+len(cases), 1)
@@ -133,7 +133,7 @@ class Cases:
     async def _get_attachments_for_case(self, case: dict, data: dict) -> dict:
         self.logger.log(f'[{self.project["code"]}][Tests] Getting attachments for case {case["title"]}')
         try:
-            attachments = await self.pools.tr(self.testrail.get_attachments_case, case['id'])
+            attachments = await self.pools.source(self.testrail.get_attachments_case, case['id'])
         except Exception as e:
             self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachments for case {case["title"]}: {e}', 'error')
             return data

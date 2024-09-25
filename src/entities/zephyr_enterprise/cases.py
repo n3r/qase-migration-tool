@@ -1,34 +1,35 @@
 import asyncio
 
-from ...service import QaseService, TestrailService
+from ...service import QaseService, ZephyrEnterpriseService
 from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
-from qaseio.models import TestStepCreate, TestCasebulkCasesInner
 from .attachments import Attachments
 
 from typing import List, Optional, Union
 
-from urllib.parse import quote
 from datetime import datetime
 
+from qaseio.models import TestStepCreate, TestCasebulkCasesInner
+
+from urllib.parse import quote
 
 class Cases:
     def __init__(
             self,
             qase_service: QaseService,
-            source_service: TestrailService,
+            source_service: ZephyrEnterpriseService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = source_service
+        self.zephyr = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
         self.pools = pools
-        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config, self.pools)
+        self.attachments = Attachments(self.qase, self.zephyr, self.logger, self.mappings, self.config, self.pools)
         self.total = 0
         self.logger.divider()
 
@@ -41,80 +42,64 @@ class Cases:
         self.project = project
 
         async with asyncio.TaskGroup() as tg:
-            if self.project['suite_mode'] == 3:
-                suites = await self.pools.source(self.testrail.get_suites, self.project['testrail_id'])
-                for suite in suites:
-                    tg.create_task(self.import_cases_for_suite(suite['id']))
-            else:
-                tg.create_task(self.import_cases_for_suite(None))  # Assuming None is a valid suite_id when suite_mode is not 3
+            for suite_id in self.mappings.suites[project['code']]:
+                tg.create_task(self.import_cases_for_suite(suite_id))
 
     async def import_cases_for_suite(self, suite_id):
-        offset = 0
-        limit = 100
-        while True:
-            count = await self.process_cases(suite_id, offset, limit)
-            if count < limit:
-                break
-            offset += limit
+        await self.process_cases(suite_id)
 
-    async def process_cases(self, suite_id: int, offset: int, limit: int):
+    async def process_cases(self, suite_id: int):
         try:
-            if suite_id is None:
-                suite_id = 0
-            cases = await self.pools.source(self.testrail.get_cases, self.project['testrail_id'], suite_id, limit, offset)
-            self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'testrail', cases['size'])
-            if cases:
-                self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+cases['size'], 1)
-                self.logger.log(f'[{self.project["code"]}][Tests] Importing {cases["size"]} cases from {offset} to {offset + limit} for suite {suite_id}')
-                data = await self._prepare_cases(cases)
+            cases = await self.pools.source(self.zephyr.get_cases_for_suite, suite_id)
+            self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'zephyr-enterprise', len(cases))
+            if cases and len(cases) > 0 and suite_id < 1000000:
+                self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+len(cases), 1)
+                self.logger.log(f'[{self.project["code"]}][Tests] Importing {len(cases)} cases for suite {suite_id}')
+                data = await self._prepare_cases(cases, suite_id)
                 if data:
                     status = await self.pools.qs(self.qase.create_cases, self.project['code'], data)
                     if status:
-                        self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'qase', cases['size'])
-                self.total = self.total + cases['size']
+                        self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'qase', len(cases))
+                self.total = self.total + len(cases)
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total, 1)
-            return cases['size']
+            return len(cases)
         except Exception as e:
             self.logger.log(f"[{self.project['code']}][Tests] Error processing cases for suite {suite_id}: {e}", 'error')
             return 0
 
-    async def _prepare_cases(self, cases: List) -> List:
-        result = []
-        async with asyncio.TaskGroup() as tg:
-            for case in cases['cases']:
-                tg.create_task(self._prepare_case(case, result))
+    async def _prepare_cases(self, cases: List, suite_id: int) -> List:
+        results = []
+        for case in cases:
+            results.append(self._prepare_case(case, suite_id))
 
-        return result
+        return results
 
-    async def _prepare_case(self, case, result):
+    def _prepare_case(self, case, suite_id):
         data = {
-            'id': int(case['id']),
-            'title': case['title'],
-            'created_at': str(datetime.fromtimestamp(case['created_on'])),
-            'updated_at': str(datetime.fromtimestamp(case['updated_on'])),
-            'author_id': self.mappings.get_user_id(case['created_by']),
+            'title': case['testcase']['name'],
+            'created_at': str(datetime.fromtimestamp(round(case['testcase']['createDatetime']/1000))),
+            'updated_at': str(datetime.fromtimestamp(round(case['testcase']['lastModifiedOn']/1000))),
+            'author_id': self.mappings.get_user_id(case['testcase']['creatorId']),
             'steps': [],
             'attachments': [],
             'is_flaky': 0,
             'custom_field': {},
+            'suite_id': self._get_suite_id(suite_id)
         }
 
         # import custom fields
-        data = self._import_custom_fields_for_case(case=case, data=data)
-        data = await self._get_attachments_for_case(case=case, data=data)
+        #data = self._import_custom_fields_for_case(case=case, data=data)
+        #data = await self._get_attachments_for_case(case=case, data=data)
 
-        data = self._set_priority(case=case, data=data)
-        data = self._set_type(case=case, data=data)
-        data = self._set_status(case=case, data=data)
-        data = self._set_suite(case=case, data=data)
-        data = self._set_refs(case=case, data=data)
-        data = self._set_milestone(case=case, data=data, code=self.project['code'])
+        #data = self._set_priority(case=case, data=data)
+        #data = self._set_type(case=case, data=data)
+        #data = self._set_status(case=case, data=data)
+        #data = self._set_refs(case=case, data=data)
+        #data = self._set_milestone(case=case, data=data, code=self.project['code'])
 
-        result.append(
-            TestCasebulkCasesInner(
+        return TestCasebulkCasesInner(
                 **data
             )
-        )
     # Done
     def _set_refs(self, case:dict, data: dict):
         if self.mappings.refs_id and case['refs'] and self.config.get('tests.refs.enable'):
@@ -240,16 +225,9 @@ class Cases:
         return data
     
     # Done
-    def _set_suite(self, case: dict, data: dict) -> dict:
-        suite_id = self._get_suite_id(section_id = case['section_id'])
-        if (suite_id):
-            data['suite_id'] = suite_id
-        return data
-    
-    # Done
-    def _get_suite_id(self, section_id: Optional[int] = None) -> int:
-        if (section_id and section_id in self.mappings.suites[self.project['code']]):
-            return self.mappings.suites[self.project['code']][section_id]
+    def _get_suite_id(self, suite_id: Optional[int] = None) -> int:
+        if (suite_id and suite_id in self.mappings.suites[self.project['code']]):
+            return self.mappings.suites[self.project['code']][suite_id]
         return None
     
     def _set_milestone(self, case: dict, data: dict, code: str) -> dict:

@@ -1,7 +1,7 @@
 import asyncio
 
-from ..service import QaseService, TestItService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestItService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 from qaseio.models import TestStepCreate, TestCasebulkCasesInner
 from .attachments import Attachments
@@ -16,14 +16,14 @@ class Cases:
     def __init__(
             self,
             qase_service: QaseService,
-            testit_service: TestItService,
+            source_service: TestItService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testit = testit_service
+        self.testit = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
@@ -56,7 +56,7 @@ class Cases:
 
     async def process_cases(self, offset: int, limit: int):
         try:
-            cases = await self.pools.tr(self.testit.get_cases, self.project['testit_id'], limit, offset)
+            cases = await self.pools.source(self.testit.get_cases, self.project['testit_id'], limit, offset)
             self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'testit', len(cases))
             if cases:
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+len(cases), 1)
@@ -130,7 +130,7 @@ class Cases:
     async def _get_attachments_for_case(self, case: dict, data: dict) -> dict:
         self.logger.log(f'[{self.project["code"]}][Tests] Getting attachments for case {case["title"]}')
         try:
-            attachments = await self.pools.tr(self.testit.get_attachments_case, case['id'])
+            attachments = await self.pools.source(self.testit.get_attachments_case, case['id'])
         except Exception as e:
             self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachments for case {case["title"]}: {e}', 'error')
             return data

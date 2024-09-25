@@ -1,14 +1,14 @@
 import asyncio
 
-from ..service import QaseService, QaseScimService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, QaseScimService, TestrailService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 
 class Users:
     def __init__(
         self,
         qase_service: QaseService,
-        testrail_service: TestrailService,
+        source_service: TestrailService,
         logger: Logger,
         mappings: Mappings,
         config: Config,
@@ -17,7 +17,7 @@ class Users:
     ):
         self.qase = qase_service
         self.scim = scim_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.logger = logger
         self.mappings = mappings
         self.config = config
@@ -116,7 +116,7 @@ class Users:
         limit = 250
         offset = 0
         while True:
-            users = await self.pools.tr(self.testrail.get_users, limit, offset)
+            users = await self.pools.source(self.testrail.get_users, limit, offset)
             if 'users' in users and users['users'] is not None:
                 users = users['users']
 
@@ -152,7 +152,7 @@ class Users:
 
     async def import_groups(self):
         self.logger.log("[Users] Importing groups from TestRail")
-        groups = await self.pools.tr_gen_all(self.get_all_groups)
+        groups = await self.pools.source_gen_all(self.get_all_groups)
         self.logger.log(f"[Users] Found {len(groups)} groups in TestRail")
 
         async with asyncio.TaskGroup() as tg:

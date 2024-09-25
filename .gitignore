@@ -169,4 +169,4 @@ stats/
 
 
 # Config files
-*config.json
+/config.json

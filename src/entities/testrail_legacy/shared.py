@@ -1,20 +1,20 @@
 import asyncio
 
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, Pools
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings, Pools
 
 
 class SharedSteps:
     def __init__(
             self,
             qase_service: QaseService,
-            testrail_service: TestrailService,
+            source_service: TestrailService,
             logger: Logger,
             mappings: Mappings,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.logger = logger
         self.mappings = mappings
         self.pools = pools

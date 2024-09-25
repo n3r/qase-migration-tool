@@ -1,20 +1,20 @@
 import asyncio
 
-from ..service import QaseService, TestItService
-from ..support import Logger, Mappings, Pools
+from ...service import QaseService, TestItService
+from ...support import Logger, Mappings, Pools
 
 
 class SharedSteps:
     def __init__(
             self,
             qase_service: QaseService,
-            testit_service: TestItService,
+            source_service: TestItService,
             logger: Logger,
             mappings: Mappings,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testit = testit_service
+        self.testit = source_service
         self.logger = logger
         self.mappings = mappings
         self.pools = pools
@@ -32,9 +32,6 @@ class SharedSteps:
 
         async with asyncio.TaskGroup() as tg:
             tg.create_task(self.import_shared_steps()) 
-
-    async def import_shared_steps(self):
-
 
     async def import_shared_steps_async(self, project) -> Mappings:
         self.logger.log(f"[{project['code']}][Shared Steps] Importing shared steps")

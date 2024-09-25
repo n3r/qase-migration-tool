@@ -1,22 +1,22 @@
 import asyncio
 import json
 
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 
 class Fields:
     def __init__(
             self, 
             qase_service: QaseService,
-            testrail_service: TestrailService,
+            source_service: TestrailService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.logger = logger
         self.mappings = mappings
         self.config = config
@@ -35,7 +35,7 @@ class Fields:
         self.logger.log('[Fields] Loading custom fields from Qase')
         qase_custom_fields = await self.pools.qs(self.qase.get_case_custom_fields)
         self.logger.log('[Fields] Loading custom fields from TestRail')
-        testrail_custom_fields = await self.pools.tr(self.testrail.get_case_fields)
+        testrail_custom_fields = await self.pools.source(self.testrail.get_case_fields)
         self.logger.log('[Fields] Loading system fields from Qase')
         qase_system_fields = await self.pools.qs(self.qase.get_system_fields)
         for field in qase_system_fields:
@@ -128,7 +128,7 @@ class Fields:
     async def _create_types_map(self):
         self.logger.log('[Fields] Creating types map')
 
-        tr_types = await self.pools.tr(self.testrail.get_case_types)
+        tr_types = await self.pools.source(self.testrail.get_case_types)
         qase_types = []
 
         for field in self.system_fields:
@@ -147,7 +147,7 @@ class Fields:
     async def _create_priorities_map(self):
         self.logger.log('[Fields] Creating priorities map')
 
-        tr_priorities = await self.pools.tr(self.testrail.get_priorities)
+        tr_priorities = await self.pools.source(self.testrail.get_priorities)
         qase_priorities = []
 
         for field in self.system_fields:
@@ -166,7 +166,7 @@ class Fields:
     async def _create_result_statuses_map(self):
         self.logger.log('[Fields] Creating statuses map')
 
-        tr_statuses = await self.pools.tr(self.testrail.get_result_statuses)
+        tr_statuses = await self.pools.source(self.testrail.get_result_statuses)
         qase_statuses = []
 
         for field in self.system_fields:

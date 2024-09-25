@@ -1,24 +1,24 @@
 import asyncio
 
-from ...service import QaseService, TestrailService
+from ...service import QaseService, ZephyrEnterpriseService
 from ...support import Logger, Mappings, ConfigManager as Config, Pools
+
 from typing import Optional
 
 import re
-
 
 class Projects:
     def __init__(
             self,
             qase_service: QaseService,
-            source_service: TestrailService,
+            source_service: ZephyrEnterpriseService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = source_service
+        self.zephyr = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
@@ -26,34 +26,33 @@ class Projects:
         self.existing_codes = set()
         self.logger.divider()
 
-    def import_projects(self):
+    def import_projects(self) -> Mappings:
         return asyncio.run(self.import_projects_async())
 
-    async def import_projects_async(self):
-        self.logger.log('Importing projects from TestRail')
+    async def import_projects_async(self) -> Mappings:
+        self.logger.log('Importing projects from Zephyr Enterprise')
 
-        testrail_projects = await self._get_all_projects()
-        if testrail_projects:
-            total = len(testrail_projects)
+        zephyr_projects = await self._get_all_projects()
+        if zephyr_projects:
+            total = len(zephyr_projects)
             self.logger.log(f'Found {str(total)} projects')
             self.logger.print_status('Importing projects', total=total)
 
             async with asyncio.TaskGroup() as tg:
-                for i, project in enumerate(testrail_projects):
+                for i, project in enumerate(zephyr_projects):
                     tg.create_task(self.import_project(i, project, total))
         else:
-            self.logger.log('No projects found in TestRail')
+            self.logger.log('No projects found in Zephyr Enterprise')
         return self.mappings
-
+    
     async def import_project(self, i, project, total):
-        self.logger.log(f'Importing project: {project["name"]}. Is Completed: {project["is_completed"]}')
-        if self._check_import(project['name'], project['is_completed']):
+        self.logger.log(f'Importing project: {project["name"]}')
+        if self._check_import(project['name']):
             data = {
-                "testrail_id": project['id'],
-                "name": project['name'],
-                "suite_mode": project['suite_mode']
+                "zephyr_id": project['id'],
+                "name": project['name']
             }
-            code = await self._create_project(project['name'], project['announcement'])
+            code = await self._create_project(project['name'], '')
             if code:
                 data['code'] = code
                 self.mappings.projects.append(data)
@@ -64,35 +63,14 @@ class Projects:
         else:
             self.logger.log(f'Skipping project: {project["name"]}')
         self.logger.print_status('Importing projects', i, total)
-
+    
     async def _get_all_projects(self):
-        offset = 0
-        limit = 250
-        projects = []
-        while True:
-            result = await self.pools.source(self.testrail.get_projects, limit, offset)
-            projects = projects + result['projects']
-            if result['size'] < limit:
-                break
-            offset += limit
-        
-        return projects
-
+        return self.zephyr.get_projects() 
+    
     # Function checks if the project should be imported
-    def _check_import(self, title: str, is_completed: bool) -> bool:
-        project_status = self.config.get('projects.status')
+    def _check_import(self, title: str) -> bool:
         projects_to_import = self.config.get('projects.import')
-        if not project_status:
-            project_status = 'all'
 
-        # If project is completed and we want to import only active projects, skip the project
-        if is_completed and project_status == 'active':
-            return False
-        
-        # If project is active and we want to import only completed projects, skip the project
-        if not is_completed and project_status == 'completed':
-            return False
-        
         # If we have a list of projects to import and the current project is not in the list, skip the project
         if projects_to_import and title not in projects_to_import:
             return False

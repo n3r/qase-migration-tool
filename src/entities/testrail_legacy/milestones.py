@@ -1,11 +1,11 @@
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings
 
 
 class Milestones:
-    def __init__(self, qase_service: QaseService, testrail_service: TestrailService, logger: Logger, mappings: Mappings) -> Mappings:
+    def __init__(self, qase_service: QaseService, source_service: TestrailService, logger: Logger, mappings: Mappings) -> Mappings:
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.logger = logger
         self.mappings = mappings
 

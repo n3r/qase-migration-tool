@@ -8,12 +8,13 @@ class Importer:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:
         self.pools = Pools(
             qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=250, interval=12),
-            tr_pool=ThreadPoolExecutor(max_workers=8),
+            source_pool=ThreadPoolExecutor(max_workers=8),
         )
 
         self.logger = logger
         self.config = config
         self.qase_scim_service = None
+        self.source = config.get('source')
         
         self.qase_service = QaseService(config, logger)
         if config.get('qase.scim_token'):
@@ -23,10 +24,47 @@ class Importer:
 
         self.active_project_code = None
 
-        self.mappings = Mappings(self.config.get('users.default'))
+        self.mappings = Mappings(self.source, self.config.get('users.default'))
 
     def start(self):
-        # Step 1. Build users map
+        match self.source:
+            case 'zephyr':
+                self.logger.log('Zephyr is not supported yet')
+                exit()
+            case 'zephyr-enterprise':
+                from .entities.zephyr_enterprise import Users, Fields, Projects, Attachments
+            case 'testrail':
+                from .entities.testrail import Users, Fields, Projects, Attachments
+            case 'testrail-legacy':
+                from .entities.testrail_legacy import Users, Fields, Projects, Attachments
+            case 'testit':
+                from .entities.testit import Users, Fields, Projects, Attachments
+            case 'testlink':
+                self.logger.log('Testlink is not supported yet')
+                exit()
+            case 'xray':
+                self.logger.log('Xray is not supported yet')
+                exit()
+            case 'practitest':
+                self.logger.log('Practitest is not supported yet')
+                exit()
+            case 'qtest':
+                self.logger.log('QTest is not supported yet')
+                exit()
+            case 'allure-testops':
+                self.logger.log('Allure TestOps is not supported yet')
+                exit()
+            case 'tuskr':
+                self.logger.log('Tuskr is not supported yet')
+                exit()
+            case 'testmo':
+                self.logger.log('Testmo is not supported yet')
+                exit()
+            case _:
+                self.logger.log('Source is not supported yet')
+                exit()
+        
+        # Step 1. Build users map +
         self.mappings = Users(
             self.qase_service,
             self.source_service,
@@ -37,7 +75,7 @@ class Importer:
             self.qase_scim_service,
         ).import_users()
 
-        # Step 2. Import project and build projects map
+        # Step 2. Import project and build projects map +
         self.mappings = Projects(
             self.qase_service, 
             self.source_service, 
@@ -47,7 +85,7 @@ class Importer:
             self.pools,
         ).import_projects()
 
-        # Step 3. Import attachments
+        # Step 3. Import attachments +
         self.mappings = Attachments(
             self.qase_service,
             self.source_service,
@@ -85,11 +123,25 @@ class Importer:
         self.mappings.stats.save_xlsx(str(self.config.get('prefix')))
 
     def import_project_data(self, project):
+        match self.source:
+            case 'zephyr-enterprise':
+                from .entities.zephyr_enterprise import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+            case 'testrail':
+                from .entities.testrail import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+            case 'testrail-legacy':
+                from .entities.testrail_legacy import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+            case 'testit':
+                from .entities.testit import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+            case _:
+                self.logger.log('Source is not supported yet')
+                exit()
+                
         self.logger.print_group(f'Importing project: {project["name"]}'
                                 + (' ('
                                    + project['suite_title']
                                    + ')' if 'suite_title' in project else ''))
 
+        # Step 5.1. Import configurations +
         self.mappings = Configurations(
             self.qase_service,
             self.source_service,
@@ -98,6 +150,7 @@ class Importer:
             self.pools,
         ).import_configurations(project)
 
+        # Step 5.2. Import shared steps +
         self.mappings = SharedSteps(
             self.qase_service,
             self.source_service,
@@ -106,6 +159,7 @@ class Importer:
             self.pools,
         ).import_shared_steps(project)
 
+        # Step 5.3. Import milestones
         self.mappings = Milestones(
             self.qase_service,
             self.source_service,
@@ -113,6 +167,7 @@ class Importer:
             self.mappings,
         ).import_milestones(project)
 
+        # Step 5.4. Import suites
         self.mappings = Suites(
             self.qase_service,
             self.source_service,
@@ -122,6 +177,7 @@ class Importer:
             self.pools,
         ).import_suites(project)
 
+        # Step 5.5. Import cases
         Cases(
             self.qase_service,
             self.source_service,
@@ -131,32 +187,30 @@ class Importer:
             self.pools,
         ).import_cases(project)
 
-        Runs(
-            self.qase_service,
-            self.source_service,
-            self.logger,
-            self.mappings,
-            self.config,
-            project,
-            self.pools,
-        ).import_runs()
+        # Step 5.6. Import runs
+        #Runs(
+        #    self.qase_service,
+        #    self.source_service,
+        #    self.logger,
+        #    self.mappings,
+        #    self.config,
+        #    project,
+        #    self.pools,
+        #).import_runs()
 
     def get_source_service(self):
-        match self.config.get('source'):
+        match self.source:
+            case 'zephyr-enterprise':
+                from .service import ZephyrEnterpriseService
+                return ZephyrEnterpriseService(self.config, self.logger)
             case 'testrail':
                 from .service import TestrailService
-                from .entities.testrail import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
-
                 return TestrailService(self.config, self.logger)
             case 'testrail-legacy':
                 from .service import TestrailLegacyService
-                from .entities.testrail_legacy import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
-
                 return TestrailLegacyService(self.config, self.logger)
             case 'testit':
                 from .service import TestitService
-                from .entities.testit import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
-
                 return TestitService(self.config, self.logger)
             case _:
                 raise Exception('Invalid source')

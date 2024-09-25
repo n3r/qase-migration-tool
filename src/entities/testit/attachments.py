@@ -1,7 +1,7 @@
 import asyncio
 
-from ..service import QaseService, TestItService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestItService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 from typing import List
 
@@ -16,14 +16,14 @@ class Attachments:
     def __init__(
             self,
             qase_service: QaseService,
-            testit_service: TestItService,
+            source_service: TestItService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testit = testit_service
+        self.testit = source_service
         self.logger = logger
         self.config = config
         self.mappings = mappings
@@ -78,7 +78,7 @@ class Attachments:
             if attachment['project_id'][0] in self.mappings.project_map:
                 code = self.mappings.project_map[attachment['project_id'][0]]
                 try: 
-                    meta = self._get_attachment_meta(await self.pools.tr(self.testit.get_attachment, attachment['id']))
+                    meta = self._get_attachment_meta(await self.pools.source(self.testit.get_attachment, attachment['id']))
                 except Exception as e:
                     self.logger.log(f'[Attachments] Exception when calling TestIT->get_attachment: {e}', 'error')
                     return

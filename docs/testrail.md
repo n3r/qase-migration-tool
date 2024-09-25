@@ -2,6 +2,17 @@
 
 This script helps you to migrate your test cases from TestRail to Qase. It's written in Python 3.11 and uses [Qase API](https://qase.io/api/v1/) and [TestRail API](http://docs.gurock.com/testrail-api2/start).
 
+## Supported TestRail versions
+
+There are two versions for migrating data from TestRail:
+
+- Legacy (TestRail < 7.1)
+- Modern (TestRail >= 7.1)
+
+## Supported data
+
+- TestRail API 
+
 ## How to use
 
 ### 1. Install dependencies
@@ -16,6 +27,7 @@ Create a new config file from the example or use template:
 
 ```json
 {
+    "source": "<testrail|testrail-legacy>",
     "qase": {
         "api_token": "<QASE_API_TOKEN>",
         "scim_token": "<QASE_SCIM_API_TOKEN>",

@@ -7,10 +7,11 @@ try:
     config.load_config()
 except Exception as e:
     config.build_config()
-
+    
 prefix = config.get('prefix')
 if prefix == None:
     prefix = ''
+
 
 logger = Logger(config.get('debug'), prefix=prefix)
 

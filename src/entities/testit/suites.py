@@ -1,7 +1,7 @@
 import asyncio
 
-from ..service import QaseService, TestItService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestItService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 from .attachments import Attachments
 
@@ -12,14 +12,14 @@ class Suites:
     def __init__(
             self, 
             qase_service: QaseService, 
-            testit_service: TestItService, 
+            source_service: TestItService, 
             logger: Logger, 
             mappings: Mappings, 
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testit = testit_service
+        self.testit = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings

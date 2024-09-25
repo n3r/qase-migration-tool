@@ -1,7 +1,7 @@
 import asyncio
 
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 from typing import Optional
 
 import re
@@ -11,14 +11,14 @@ class Projects:
     def __init__(
             self,
             qase_service: QaseService,
-            testrail_service: TestrailService,
+            source_service: TestrailService,
             logger: Logger,
             mappings: Mappings,
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
@@ -70,7 +70,7 @@ class Projects:
         limit = 250
         projects = []
         while True:
-            result = await self.pools.tr(self.testrail.get_projects, limit, offset)
+            result = await self.pools.source(self.testrail.get_projects, limit, offset)
             projects = projects + result
             if len(result) < limit:
                 break

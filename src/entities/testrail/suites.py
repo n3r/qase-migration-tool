@@ -1,7 +1,7 @@
 import asyncio
 
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 
 from .attachments import Attachments
 
@@ -12,14 +12,14 @@ class Suites:
     def __init__(
             self, 
             qase_service: QaseService, 
-            testrail_service: TestrailService, 
+            source_service: TestrailService, 
             logger: Logger, 
             mappings: Mappings, 
             config: Config,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
@@ -37,7 +37,7 @@ class Suites:
         async with asyncio.TaskGroup() as tg:
             if project['suite_mode'] == 3:
                 # Suites in testrail should be saved as suites in Qase
-                suites = await self.pools.tr(self.testrail.get_suites, project['testrail_id'])
+                suites = await self.pools.source(self.testrail.get_suites, project['testrail_id'])
                 self.mappings.stats.add_entity_count(project['code'], 'suites', 'testrail', len(suites))
                 i = 0
                 for suite in suites:
@@ -66,7 +66,7 @@ class Suites:
             testrail_suite_id: Optional[int], 
             parent_id: Optional[int] = None
         ):
-        sections = await self.pools.tr(self._get_sections, testrail_project_id, testrail_suite_id)
+        sections = await self.pools.source(self._get_sections, testrail_project_id, testrail_suite_id)
         self.mappings.stats.add_entity_count(qase_code, 'suites', 'testrail', len(sections))
         self.logger.log(f"[{qase_code}][Suites] Found {len(sections)} sections")
 

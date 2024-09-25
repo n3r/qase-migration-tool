@@ -1,8 +1,8 @@
 import asyncio
 import math
 
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ...service import QaseService, TestrailService
+from ...support import Logger, Mappings, ConfigManager as Config, Pools
 from .attachments import Attachments
 
 from datetime import datetime
@@ -12,14 +12,14 @@ class Runs:
     def __init__(
             self,
             qase_service: QaseService,
-            testrail_service: TestrailService,
+            source_service: TestrailService,
             logger: Logger,
             mappings: Mappings, config: Config,
             project: list,
             pools: Pools,
     ):
         self.qase = qase_service
-        self.testrail = testrail_service
+        self.testrail = source_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
@@ -69,7 +69,7 @@ class Runs:
 
         while True:
             data['offset'] = offset
-            runs = await self.pools.tr(self.testrail.get_runs, **data)
+            runs = await self.pools.source(self.testrail.get_runs, **data)
             self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(runs["runs"]))} runs in TestRail')
             for run in runs['runs']:
                 self.index.append({
@@ -97,7 +97,7 @@ class Runs:
 
         while True:
             self.logger.log(f'[{self.project["code"]}][Runs] Fetching plans from TestRail')
-            plans = await self.pools.tr(self.testrail.get_plans, self.project['testrail_id'], limit, offset)
+            plans = await self.pools.source(self.testrail.get_plans, self.project['testrail_id'], limit, offset)
             for plan in plans['plans']:
                 plan = self.testrail.get_plan(plan['id'])
                 if plan is not None and 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
@@ -150,7 +150,7 @@ class Runs:
 
         while True:
             self.logger.log(f'[{self.project["code"]}][Runs] Fetching results for the run {run["name"]} [{run["id"]}]')
-            results = await self.pools.tr(self.testrail.get_results, run['id'], limit, offset)
+            results = await self.pools.source(self.testrail.get_results, run['id'], limit, offset)
             run_results = run_results + self._clean_results(results['results'])
             offset = offset + limit
             if results['size'] < limit:
@@ -283,7 +283,7 @@ class Runs:
         process = True
 
         while process:
-            tests = await self.pools.tr(self.testrail.get_tests, run['id'], limit, offset)
+            tests = await self.pools.source(self.testrail.get_tests, run['id'], limit, offset)
             if tests['size'] < limit:
                 process = False
             offset = offset + limit

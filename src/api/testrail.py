@@ -1,11 +1,10 @@
 import base64
 import time
 import requests
-import re
 import http.client
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
-
+from ..exceptions.api import APIError
 
 class TestrailApiClient:
     def __init__(self, base_url, user, token, logger, max_retries=7, backoff_factor=5):
@@ -134,6 +133,3 @@ class TestrailApiClient:
                                 stop = True  # No more offsets to process
 
         return attachments
-        
-class APIError(Exception):
-    pass

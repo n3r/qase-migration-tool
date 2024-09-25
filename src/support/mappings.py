@@ -2,7 +2,7 @@ from .stats import Stats
 
 
 class Mappings:
-    def __init__(self, default_user: int = 1):
+    def __init__(self, source: str, default_user: int = 1):
         self.suites = {}
         self.users = {}
         self.types = {}
@@ -36,6 +36,19 @@ class Mappings:
             8: 9,
             12: 6,
         }
+
+        self.zephyr_enterprise_fields_type = {
+            1: 2,
+            2: 2,
+            3: 3,
+            4: 4,
+            5: 9,
+            6: 0,
+            7: 0,
+            8: 1,
+            10: 0,
+        }
+
         self.qase_fields_type = {
             "number": 0,
             "string": 1,
@@ -50,7 +63,7 @@ class Mappings:
         }
 
         self.default_user = default_user
-        self.stats = Stats()
+        self.stats = Stats(source=source)
 
 
     def get_user_id(self, id: int) -> int:

@@ -64,6 +64,16 @@ class QaseService:
             if len(result) < limit:
                 break
 
+    def get_all_users_sync(self, limit=100):
+        offset = 0
+        result = []
+        while True:
+            result = result.extend(self._get_users(limit, offset))
+            offset += limit
+            if len(result) < limit:
+                break
+        return result
+
     def get_case_custom_fields(self):
         self.logger.log('Getting custom fields from Qase')
         try:
@@ -132,45 +142,6 @@ class QaseService:
                 return api_response.result
         except ApiException as e:
             self.logger.log("Exception when calling SystemFieldsApi->get_system_fields: %s\n" % e)
-
-    def prepare_custom_field_data(self, field, mappings) -> dict:
-        data = {
-            'title': field['label'],
-            'entity': 0,  # 0 - case, 1 - run, 2 - defect,
-            'type': mappings.custom_fields_type[field['type_id']],
-            'value': [],
-            'is_filterable': True,
-            'is_visible': True,
-            'is_required': False,
-        }
-        if not field['configs'] or field['configs'][0]['context']['is_global']:
-            data['is_enabled_for_all_projects'] = True
-        else:
-            data['is_enabled_for_all_projects'] = False
-            if field['configs'][0]['context']['project_ids']:
-                data['projects_codes'] = []
-                for config in field['configs']:
-                    for id in config['context']['project_ids']:
-                        if id in mappings.project_map:
-                            data['projects_codes'].append(mappings.project_map[id])
-
-        if self.__get_default_value(field):
-            data['default_value'] = self.__get_default_value(field)
-        if field['type_id'] == 12 or field['type_id'] == 6:
-            if len(field['configs']) > 0:
-                values = self.__split_values(field['configs'][0]['options']['items'])
-                field['qase_values'] = {}
-                for key, value in values.items():
-                    data['value'].append(
-                        CustomFieldCreateValueInner(
-                            id=int(key)+1,  # hack as in testrail ids can start from 0
-                            title=value,
-                        ),
-                    )
-                    field['qase_values'][int(key)+1] = value
-            else:
-                self.logger.log('Error creating custom field: ' + field['label'] + '. No options found', 'warning')
-        return data
 
     @staticmethod
     def __get_default_value(field):
