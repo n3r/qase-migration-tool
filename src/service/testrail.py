@@ -18,7 +18,7 @@ class TestrailService:
 
         self.logger = logger
 
-        if config.get('testrail_db_host'):
+        if config.get('testrail.db.host'):
             self.db_repository = TestrailDbRepository(host=config.get('testrail.db.host'),
                              database=config.get('testrail.db.database'),
                              user=config.get('testrail.db.user'),
