@@ -5,32 +5,38 @@ from ..api.testrail import TestrailApiClient
 class TestrailService:
     def __init__(self, config, logger):
         self.db_repository = None
-        self.api_repository = TestrailApiRepository(
-            TestrailApiClient(
-                base_url = config.get('testrail.api.host'),
-                user = config.get('testrail.api.user'),
-                token = config.get('testrail.api.password'),
-                logger = logger,
-                max_retries = 5,
-                backoff_factor = 5
+        self.api_repository = None
+        
+        if config.get('testrail.api'):
+            self.api_repository = TestrailApiRepository(
+                TestrailApiClient(
+                    base_url = config.get('testrail.api.host'),
+                    user = config.get('testrail.api.user'),
+                    token = config.get('testrail.api.password'),
+                    logger = logger,
+                    max_retries = 5,
+                    backoff_factor = 5
+                )
             )
-        )
 
         self.logger = logger
 
-        if config.get('testrail.db.host'):
+        if config.get('testrail.db'):
             self.db_repository = TestrailDbRepository(host=config.get('testrail.db.host'),
                              database=config.get('testrail.db.database'),
                              user=config.get('testrail.db.user'),
                              password=config.get('testrail.db.password'))
             self.db_repository.connect()
 
-        if self.db_repository:
-            self.repository = self.db_repository
-            self.logger.log('Using TestRail DB repository')
-        else:
+        if self.api_repository:
             self.logger.log('Using TestRail API repository')
             self.repository = self.api_repository
+        elif self.db_repository:
+            self.logger.log('Using TestRail DB repository')
+            self.repository = self.db_repository
+        else:
+            self.logger.log(f'Error loading TestRail configuration')
+            raise Exception('Invalid source')
     
     def get_users(self, limit: int = 250, offset: int = 0):
         return self.repository.get_users(limit, offset)
