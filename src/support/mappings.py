@@ -9,7 +9,12 @@ class Mappings:
         self.priorities = {}
         self.result_statuses = {}
         self.case_statuses = {}
-        self.custom_fields = {}
+        
+        #custom fields
+        self.case_custom_fields = {}
+        self.defect_custom_fields = {}
+        self.run_custom_fields = {}
+
         self.milestones = {}
         self.configurations = {}
         self.projects = []
@@ -49,6 +54,19 @@ class Mappings:
             10: 0,
         }
 
+        self.practitest_fields_type = {
+            'memo': 1,
+            'text': 2,
+            'number': 0,
+            'user': 8,
+            'url': 7,
+            'multilist': 6,
+            'checkbox': 4,
+            'date': 0,
+            'list': 3,
+            'linkedlist': 3
+        }
+
         self.qase_fields_type = {
             "number": 0,
             "string": 1,
@@ -62,11 +80,27 @@ class Mappings:
             "datetime": 9,
         }
 
-        self.default_user = default_user
+        self.practitest_run_statuses = {
+            "PASSED": 'passed',
+            "FAILED": 'failed',
+            "BLOCKED": 'blocked',
+            "NO_RUN": 'skipped',
+            "N/A": 'invalid',
+        }
+
+        self.practitest_step_statuses = {
+            "PASSED": 'passed',
+            "FAILED": 'failed',
+            "BLOCKED": 'blocked',
+            "NO_RUN": 'skipped',
+            "N/A": 'skipped',
+        }
+
+        self.default_user = default_user if default_user else 1
         self.stats = Stats(source=source)
 
 
     def get_user_id(self, id: int) -> int:
-        if (id in self.users):
-            return self.users[id]
+        if (int(id) in self.users):
+            return self.users[int(id)]
         return self.default_user  

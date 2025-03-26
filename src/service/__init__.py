@@ -4,6 +4,7 @@ from .qase_scim import QaseScimService
 from .testrail import TestrailService
 from .testit import TestItService
 from .zephyr_enterprise import ZephyrEnterpriseService
+from .practitest import PractitestService
 
 __all__ = [
     "QaseService",
@@ -11,4 +12,5 @@ __all__ = [
     "TestrailService",
     "TestItService",
     "ZephyrEnterpriseService",
+    "PractitestService",
 ]

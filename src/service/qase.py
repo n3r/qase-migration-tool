@@ -17,8 +17,9 @@ from qaseio.api.attachments_api import AttachmentsApi
 from qaseio.api.milestones_api import MilestonesApi
 from qaseio.api.configurations_api import ConfigurationsApi
 from qaseio.api.shared_steps_api import SharedStepsApi
+from qaseio.api.defects_api import DefectsApi
 
-from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, RunCreate, ResultcreateBulk, ConfigurationCreate, ConfigurationGroupCreate, SharedStepCreate, SharedStepContentCreate
+from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, RunCreate, ResultcreateBulk, ConfigurationCreate, ConfigurationGroupCreate, SharedStepCreate, SharedStepContentCreate, DefectCreate
 
 from datetime import datetime
 
@@ -259,6 +260,9 @@ class QaseService:
         if len(cases) > 0:
             data['cases'] = cases
 
+        if run['custom_field']:
+            data['custom_field'] = run['custom_field']
+
         try:
             response = api_instance.create_run(code=project_code, run_create=RunCreate(**data))
             return response.result.id
@@ -328,6 +332,17 @@ class QaseService:
                             results=res
                         )
                     )
+                
+    def send_bulk_results_raw(self, results, qase_run_id, qase_code):
+        api_results = ResultsApi(self.client)
+        self.logger.log(f'[{qase_code}][Runs] Sending {len(results)} results to Qase')
+        api_results.create_result_bulk(
+                code=qase_code,
+                id=int(qase_run_id),
+                resultcreate_bulk=ResultcreateBulk(
+                    results=results
+                )
+            )
 
     def prepare_result_steps(self, steps, status_map) -> list:
         allowed_statuses = ['passed', 'failed', 'blocked', 'skipped']
@@ -369,6 +384,27 @@ class QaseService:
             self.logger.log(f'Exception when converting time string: {e}', 'warning')
 
         return total_seconds
+    
+    def create_defect(self, project_code, data):
+        api_instance = DefectsApi(self.client)
+        if data:
+            data = {
+                'title': data['title'],
+                'actual_result': data['description'] if data['description'] != '' else 'No actual result',
+                'severity': 1,
+                'custom_field': data['custom_field'],
+                'attachments': data['attachments'],
+                'author_id': data['author_id']
+            }
+            try:
+                api_response = api_instance.create_defect(
+                    code=project_code,
+                    defect_create=DefectCreate(**data)
+                )
+                return api_response.result.id
+            except Exception as e:
+                self.logger.log(f'Exception when calling DefectsApi->create_defect: {e}')
+        return None
 
     def upload_attachment(self, code, attachment_data):
         api_attachments = AttachmentsApi(self.client)

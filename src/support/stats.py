@@ -60,7 +60,7 @@ class Stats:
         pprint(vars(self), depth=4, sort_dicts=False)
 
     def save(self, prefix: str = ''):
-        filename = f'{prefix}_stats.json'
+        filename = 'stats.json' if prefix == '' else f'{prefix}_stats.json'
         stats_dir = './stats'
         if not os.path.exists(stats_dir):
             os.makedirs(stats_dir)
@@ -70,7 +70,7 @@ class Stats:
 
     def save_xlsx(self, prefix: str = ''):
         try:
-            filename = f'{prefix}_stats.xlsx'
+            filename = 'stats.json' if prefix == '' else f'{prefix}_stats.json'
             stats_dir = './stats'
             if not os.path.exists(stats_dir):
                 os.makedirs(stats_dir)

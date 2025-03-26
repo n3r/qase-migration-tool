@@ -46,8 +46,7 @@ class Importer:
                 self.logger.log('Xray is not supported yet')
                 exit()
             case 'practitest':
-                self.logger.log('Practitest is not supported yet')
-                exit()
+                from .entities.practitest import Users, Fields, Projects, Attachments
             case 'qtest':
                 self.logger.log('QTest is not supported yet')
                 exit()
@@ -118,20 +117,23 @@ class Importer:
                 # This will also re-raise any exceptions caught during execution of the callable
                 future.result()
 
+        prefix = str(self.config.get('prefix')) if self.config.get('prefix') else ''
         self.mappings.stats.print()
-        self.mappings.stats.save(str(self.config.get('prefix')))
-        self.mappings.stats.save_xlsx(str(self.config.get('prefix')))
+        self.mappings.stats.save(prefix)
+        self.mappings.stats.save_xlsx(prefix)
 
     def import_project_data(self, project):
         match self.source:
             case 'zephyr-enterprise':
-                from .entities.zephyr_enterprise import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+                from .entities.zephyr_enterprise import Suites, Cases, Runs, Milestones, Configurations, SharedSteps, Defects
             case 'testrail':
-                from .entities.testrail import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+                from .entities.testrail import Suites, Cases, Runs, Milestones, Configurations, SharedSteps, Defects
             case 'testrail-legacy':
-                from .entities.testrail_legacy import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+                from .entities.testrail_legacy import Suites, Cases, Runs, Milestones, Configurations, SharedSteps, Defects
             case 'testit':
-                from .entities.testit import Suites, Cases, Runs, Milestones, Configurations, SharedSteps
+                from .entities.testit import Suites, Cases, Runs, Milestones, Configurations, SharedSteps, Defects
+            case 'practitest':
+                from .entities.practitest import Suites, Cases, Runs, Milestones, Configurations, SharedSteps, Defects
             case _:
                 self.logger.log('Source is not supported yet')
                 exit()
@@ -188,15 +190,24 @@ class Importer:
         ).import_cases(project)
 
         # Step 5.6. Import runs
-        #Runs(
-        #    self.qase_service,
-        #    self.source_service,
-        #    self.logger,
-        #    self.mappings,
-        #    self.config,
-        #    project,
-        #    self.pools,
-        #).import_runs()
+        Runs(
+            self.qase_service,
+            self.source_service,
+            self.logger,
+            self.mappings,
+            self.config,
+            project,
+            self.pools,
+        ).import_runs()
+
+        Defects(
+            self.qase_service,
+            self.source_service,
+            self.logger,
+            self.mappings,
+            self.config,
+            self.pools,
+        ).import_defects(project)
 
     def get_source_service(self):
         match self.source:
@@ -212,5 +223,8 @@ class Importer:
             case 'testit':
                 from .service import TestitService
                 return TestitService(self.config, self.logger)
+            case 'practitest':
+                from .service import PractitestService
+                return PractitestService(self.config, self.logger)
             case _:
                 raise Exception('Invalid source')

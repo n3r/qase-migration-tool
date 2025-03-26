@@ -59,8 +59,6 @@ class Cases:
 
     async def process_cases(self, suite_id: int, offset: int, limit: int):
         try:
-            if suite_id is None:
-                suite_id = 0
             cases = await self.pools.source(self.testrail.get_cases, self.project['testrail_id'], suite_id, limit, offset)
             self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'testrail', cases['size'])
             if cases:

@@ -7,9 +7,9 @@ class QaseScimClient:
         if not base_url.endswith('/'):
             base_url += '/'
         if ssl:
-            self.__url = 'https://' + base_url + 'scim/v2/'
+            self.__url = 'https://app.' + base_url + 'scim/v2/'
         else:
-            self.__url = 'http://' + base_url + 'scim/v2/'
+            self.__url = 'http://app.' + base_url + 'scim/v2/'
 
         self.headers = {
             'Authorization': 'Bearer ' + token,
